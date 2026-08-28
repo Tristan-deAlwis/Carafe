@@ -13,7 +13,9 @@ import SwiftUI
 /// expressed through `Profile`, and the left edge mirrors the right.
 struct CarafeShape: Shape, InsettableShape {
     /// Width ÷ height of the silhouette's bounding box.
-    static let aspectRatio: CGFloat = 0.72
+    ///
+    /// Broad, because a decanter is a wide low vessel — a narrow one reads as a bottle.
+    static let aspectRatio: CGFloat = 0.88
 
     var insetAmount: CGFloat = 0
 
@@ -21,52 +23,67 @@ struct CarafeShape: Shape, InsettableShape {
 
     /// Named coordinates of the silhouette, in the unit square.
     ///
-    /// Three details separate a carafe from the laboratory flask this shape can
-    /// easily drift into:
+    /// A **wine decanter**: a long neck opening into a low, broad bowl that tucks
+    /// back in above a narrow foot. Three constraints hold the drawing together:
     ///
-    /// 1. **A rounded shoulder.** The flare begins gradually just below the neck
-    ///    rather than leaving it as a straight diagonal. A cone reads as a flask.
-    /// 2. **A short, fairly wide neck.** A long narrow neck also reads as a flask
-    ///    (or a bottle).
-    /// 3. **A belly that tucks back in.** The body is widest around 70% of the
-    ///    height and draws in slightly toward the foot, which is what gives a
-    ///    carafe its poise. A shape widest at the very bottom looks like a beaker.
+    /// 1. **The neck must survive the menu bar.** A decanter wants a hairline neck,
+    ///    but at 17pt the whole glyph is only ~14pt wide, and the outline is stroked
+    ///    at 1.3pt on each side. Anything under ~0.24 units across closes up into a
+    ///    solid stalk. `neckRight` is set so the neck stays ~3.4pt wide — visibly
+    ///    open — which is the single reason this shape works small at all.
+    /// 2. **The bowl sits low.** `bellyY` at 73% of the height is what separates a
+    ///    decanter from a vase. Move it up and the silhouette turns into an urn.
+    /// 3. **The foot tucks in.** Drawing back to `baseRight` above the foot gives
+    ///    the poise; a bowl that stays wide to the floor reads as a beaker.
     ///
     /// Every segment is monotonic in Y, which lets `unitRightEdge(atUnitY:)`
     /// recover X by binary search.
     private enum Profile {
-        /// The rim: a narrow opening, slightly wider than the neck below it, which
-        /// reads as a pouring lip without needing a separate curve.
-        static let rimY: CGFloat = 0.020
-        static let rimRight: CGFloat = 0.621
+        /// The rim: slightly wider than the neck below it, which reads as a pouring
+        /// lip without needing a separate curve.
+        static let rimY: CGFloat = 0.015
+        static let rimRight: CGFloat = 0.636
 
-        /// The narrowest point, at the base of a deliberately short neck.
-        static let neckY: CGFloat = 0.142
-        static let neckRight: CGFloat = 0.598
-
-        /// The widest point of the belly.
-        static let bellyY: CGFloat = 0.700
-        static let bellyRight: CGFloat = 0.942
-
-        /// Control points for the shoulder-and-belly curve.
+        /// The base of the neck — the narrowest point, and set **low** on purpose.
         ///
-        /// `shoulderControl` sits close to the neck in X but well below it in Y, so
-        /// the curve eases away from the neck instead of snapping into a diagonal —
-        /// this is what produces the rounded shoulder.
+        /// The neck running a third of the total height is the single feature that
+        /// makes this a decanter rather than a vase or an urn. Raising `neckY`
+        /// shortens the neck and the whole character goes with it.
+        static let neckY: CGFloat = 0.330
+        static let neckRight: CGFloat = 0.600
+
+        /// The widest point of the bowl, deliberately low.
+        static let bellyY: CGFloat = 0.740
+        static let bellyRight: CGFloat = 0.958
+
+        /// Control points for the shoulder-and-bowl curve.
+        ///
+        /// `shoulderControl` sits just right of the neck so the curve leaves it
+        /// vertically — no kink where the straight neck meets the bowl. Widening the
+        /// neck means moving this with it.
         /// `bellyControl` shares its X with the belly so the curve arrives vertically
-        /// at the widest point.
-        static let shoulderControl = CGPoint(x: 0.628, y: 0.286)
-        static let bellyControl = CGPoint(x: 0.942, y: 0.474)
+        /// at the widest point, giving the bowl its full round sweep.
+        static let shoulderControl = CGPoint(x: 0.606, y: 0.500)
+        static let bellyControl = CGPoint(x: 0.958, y: 0.560)
 
-        /// Where the belly has drawn back in, just above the foot.
-        static let baseY: CGFloat = 0.946
-        static let baseRight: CGFloat = 0.898
-        /// Keeps the tuck vertical as it leaves the belly.
-        static let tuckControl = CGPoint(x: 0.942, y: 0.862)
+        /// Where the bowl has drawn back in, just above the foot.
+        static let baseY: CGFloat = 0.958
+        static let baseRight: CGFloat = 0.858
 
-        /// The rounded foot.
-        static let bottomY: CGFloat = 0.990
-        static let bottomRight: CGFloat = 0.822
+        /// Control points for the tuck from belly to foot.
+        ///
+        /// A cubic, not a quadratic. A quadratic has one control point and so cannot
+        /// both leave the belly vertically and arrive at the foot along the foot's
+        /// own direction — one end or the other kinks, and the kink renders as a
+        /// small ledge that reads like a separate saucer stuck to the bottom.
+        static let tuckControl1 = CGPoint(x: 0.958, y: 0.845)
+        static let tuckControl2 = CGPoint(x: 0.880, y: 0.930)
+
+        /// The narrow foot. `footControl` roughly continues the tuck's exit
+        /// direction, so the two curves meet without a visible corner.
+        static let footControl = CGPoint(x: 0.836, y: 0.990)
+        static let bottomY: CGFloat = 0.992
+        static let bottomRight: CGFloat = 0.780
 
         static func mirrored(_ x: CGFloat) -> CGFloat { 1 - x }
     }
@@ -97,13 +114,14 @@ struct CarafeShape: Shape, InsettableShape {
             control1: point(Profile.shoulderControl),
             control2: point(Profile.bellyControl)
         )
-        path.addQuadCurve(
+        path.addCurve(
             to: point(Profile.baseRight, Profile.baseY),
-            control: point(Profile.tuckControl)
+            control1: point(Profile.tuckControl1),
+            control2: point(Profile.tuckControl2)
         )
         path.addQuadCurve(
             to: point(Profile.bottomRight, Profile.bottomY),
-            control: point(Profile.baseRight, Profile.bottomY)
+            control: point(Profile.footControl)
         )
 
         // Base, right to left.
@@ -112,11 +130,12 @@ struct CarafeShape: Shape, InsettableShape {
         // Left side, ascending — the mirror of the right.
         path.addQuadCurve(
             to: mirrored(Profile.baseRight, Profile.baseY),
-            control: mirrored(Profile.baseRight, Profile.bottomY)
+            control: mirrored(Profile.footControl)
         )
-        path.addQuadCurve(
+        path.addCurve(
             to: mirrored(Profile.bellyRight, Profile.bellyY),
-            control: mirrored(Profile.tuckControl)
+            control1: mirrored(Profile.tuckControl2),
+            control2: mirrored(Profile.tuckControl1)
         )
         path.addCurve(
             to: mirrored(Profile.neckRight, Profile.neckY),
@@ -153,10 +172,10 @@ struct CarafeShape: Shape, InsettableShape {
 
     /// The vertical span the water occupies, as unit-square Y coordinates.
     ///
-    /// Water stops below the shoulder — a carafe filled into its neck would look
-    /// wrong, and it keeps the graduations on the part of the body wide enough to
-    /// label.
-    static let waterTopY: CGFloat = 0.285
+    /// Water stops below the neck, inside the bowl — a decanter filled up its neck
+    /// would look wrong, and it keeps the graduations on the part of the bowl wide
+    /// enough to label.
+    static let waterTopY: CGFloat = 0.390
     static let waterBottomY: CGFloat = Profile.bottomY
 
     /// Converts a 0…1 fill fraction into a Y coordinate in `rect`.
@@ -190,18 +209,19 @@ struct CarafeShape: Shape, InsettableShape {
             )
 
         case ..<Profile.baseY:
-            return quadraticX(
+            return cubicX(
                 atY: y,
                 p0: CGPoint(x: Profile.bellyRight, y: Profile.bellyY),
-                control: Profile.tuckControl,
-                p2: CGPoint(x: Profile.baseRight, y: Profile.baseY)
+                c1: Profile.tuckControl1,
+                c2: Profile.tuckControl2,
+                p3: CGPoint(x: Profile.baseRight, y: Profile.baseY)
             )
 
         default:
             return quadraticX(
                 atY: y,
                 p0: CGPoint(x: Profile.baseRight, y: Profile.baseY),
-                control: CGPoint(x: Profile.baseRight, y: Profile.bottomY),
+                control: Profile.footControl,
                 p2: CGPoint(x: Profile.bottomRight, y: Profile.bottomY)
             )
         }
