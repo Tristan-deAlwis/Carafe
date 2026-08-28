@@ -98,6 +98,41 @@ struct SettingsView: View {
 
             Divider().padding(.vertical, 10)
 
+            section("Your data") {
+                note(
+                    "Carafe keeps your history in a plain JSON file you can read, "
+                        + "copy, and back up yourself.",
+                    isWarning: false
+                )
+
+                HStack(spacing: 8) {
+                    Menu("Export…") {
+                        Button("Backup (JSON)") {
+                            BackupService.export(store, as: .json)
+                        }
+                        Button("Spreadsheet (CSV)") {
+                            BackupService.export(store, as: .csv)
+                        }
+                    }
+                    .frame(width: 86)
+
+                    Button("Restore…") {
+                        BackupService.importArchive(into: store)
+                        // A restore rewrites the goal and active hours, so the
+                        // reminder schedule has to be rebuilt around them.
+                        ReminderScheduler.shared.refresh(for: store)
+                    }
+
+                    Button("Show Files") {
+                        BackupService.revealDataFolder(for: store)
+                    }
+                }
+                .controlSize(.small)
+                .font(.system(size: 11))
+            }
+
+            Divider().padding(.vertical, 10)
+
             HStack {
                 Text("Carafe \(appVersion)")
                     .font(.system(size: 10))

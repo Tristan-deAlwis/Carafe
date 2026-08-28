@@ -297,6 +297,55 @@ final class HydrationStore {
         return streak
     }
 
+    // MARK: - Backup and restore
+
+    /// The location of the JSON history file, for showing the user where their data lives.
+    var historyFileURL: URL { historyStore.fileURL }
+
+    /// A complete snapshot: history plus settings.
+    func makeBackupArchive(exportedAt: Date? = nil) -> BackupArchive {
+        BackupArchive(
+            format: BackupArchive.formatIdentifier,
+            version: BackupArchive.currentVersion,
+            exportedAt: exportedAt ?? now(),
+            appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,
+            settings: BackupArchive.Settings(
+                goalMillilitres: goalMillilitres,
+                glassMillilitres: glassMillilitres,
+                unitSystem: unitSystem,
+                remindersEnabled: remindersEnabled,
+                reminderIntervalMinutes: reminderIntervalMinutes,
+                activeStartHour: activeStartHour,
+                activeEndHour: activeEndHour
+            ),
+            days: days
+        )
+    }
+
+    /// Replaces all history and settings with the contents of an archive.
+    ///
+    /// A restore **replaces** rather than merges. Merging would need a rule for two
+    /// records of the same day disagreeing, and any rule silently discards data the
+    /// user may have wanted; replacing is at least predictable, and the UI warns
+    /// before doing it.
+    ///
+    /// Absent settings are left as they are, so an archive that omits a field does
+    /// not reset it to a default.
+    func restore(from archive: BackupArchive) {
+        if let value = archive.settings.goalMillilitres { goalMillilitres = value }
+        if let value = archive.settings.glassMillilitres { glassMillilitres = value }
+        if let value = archive.settings.unitSystem { unitSystem = value }
+        if let value = archive.settings.remindersEnabled { remindersEnabled = value }
+        if let value = archive.settings.reminderIntervalMinutes { reminderIntervalMinutes = value }
+        if let value = archive.settings.activeStartHour { activeStartHour = value }
+        if let value = archive.settings.activeEndHour { activeEndHour = value }
+
+        days = archive.days.sorted { $0.date < $1.date }
+        // The archive may predate today, so make sure today exists again.
+        rollOverIfNeeded()
+        flushPendingSave()
+    }
+
     // MARK: - Persistence
 
     /// Debounces disk writes: rapid logging (or an undo immediately after a log)

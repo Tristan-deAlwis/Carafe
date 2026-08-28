@@ -54,6 +54,63 @@ Your last seven days appear as a bar strip under the carafe, with a streak count
 A day counts toward the streak when you meet its goal — and a day still in
 progress never breaks it, so today's incomplete total is not held against you.
 
+### Your data is yours
+
+Carafe stores your history as **plain JSON** at:
+
+```
+~/Library/Application Support/Carafe/history.json
+```
+
+No database, no proprietary container, no cloud account. Pretty-printed with
+sorted keys and ISO 8601 dates, so it reads cleanly in any text editor and diffs
+cleanly in git. Copy it, script it, or commit it to a private repo — it is an
+ordinary file and the app is not sandboxed, so nothing is hidden inside a
+container.
+
+**Settings › Your data** has three buttons:
+
+| | |
+|---|---|
+| **Export → Backup (JSON)** | History *and* settings in one self-contained file. This is what **Restore** reads. |
+| **Export → Spreadsheet (CSV)** | Daily totals for Excel, Numbers, or `awk`. Export-only and lossy — daily totals, not individual drinks. |
+| **Restore…** | Replaces everything from a JSON backup. Asks first. |
+| **Show Files** | Opens the data folder in Finder. |
+
+The backup format is self-describing, so a reader can tell what it holds without
+guessing:
+
+```json
+{
+  "format": "carafe.backup",
+  "version": 1,
+  "exportedAt": "2026-08-29T09:15:00Z",
+  "appVersion": "0.1.0",
+  "settings": { "goalMillilitres": 2000, "glassMillilitres": 250, "unitSystem": "metric" },
+  "days": [
+    {
+      "date": "2026-08-28T00:00:00Z",
+      "goalMillilitres": 2000,
+      "entries": [{ "id": "…", "timestamp": "2026-08-28T09:12:00Z", "millilitres": 250 }]
+    }
+  ]
+}
+```
+
+Pull yesterday's total with nothing but `jq`:
+
+```sh
+jq '.days[-1] | {date, drunk: ([.entries[].millilitres] | add)}' Carafe-2026-08-29.json
+```
+
+New fields are added as optional so older backups keep working; `version` only
+rises for a genuinely breaking change. A file whose `format` is not
+`carafe.backup` is refused outright rather than being decoded into an empty
+archive that would wipe the history it was meant to restore.
+
+Restoring **replaces** rather than merges — merging needs a rule for two records
+of the same day disagreeing, and any such rule silently discards something.
+
 ### Correcting a past day
 
 Forgot to log a glass yesterday? Click any bar in the history strip to open that
@@ -137,8 +194,8 @@ Sources/
 ├── Model/                 HydrationStore, DayLog, DrinkEntry, UnitSystem
 ├── Shapes/                CarafeShape, WaterSurface
 ├── Views/                 popover, gauge, graduations, quick add, history, day editor, settings
-├── Services/              MenuBarIcon, ReminderScheduler, LaunchAtLogin
-└── Support/               HistoryStore (JSON persistence)
+├── Services/              MenuBarIcon, ReminderScheduler, LaunchAtLogin, BackupService
+└── Support/               HistoryStore (JSON persistence), BackupArchive (export format)
 ```
 
 `CarafeShape` is the single source of truth for the silhouette — the menu bar
@@ -147,8 +204,10 @@ drift apart.
 
 Settings live in `UserDefaults`; history lives in
 `~/Library/Application Support/Carafe/history.json`, pruned to the last 400 days.
-The app is deliberately **not** sandboxed — it is distributed outside the App
-Store, and the sandbox would only push that file into a container.
+`BackupArchive` combines the two into one portable file — see
+[Your data is yours](#your-data-is-yours). The app is deliberately **not**
+sandboxed: it is distributed outside the App Store, and the sandbox would only
+push that file into a container where you could not easily get at it.
 
 ---
 
