@@ -1,0 +1,30 @@
+# XcodeGen output — project.yml is the source of truth
+*.xcodeproj
+
+# Build products
+build/
+DerivedData/
+*.xcarchive
+*.app
+*.zip
+*.dmg
+
+# Xcode user state
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Packages/
+
+# macOS
+.DS_Store
+
+# Signing / notarization secrets — never commit
+*.p12
+*.cer
+*.provisionprofile
+ExportOptions.local.plist
