@@ -9,19 +9,26 @@ import SwiftUI
 struct QuickAddView: View {
     @Environment(HydrationStore.self) private var store
 
+    private let controlHeight: CGFloat = 26
+    private let cornerRadius: CGFloat = 6
+
     var body: some View {
         HStack(spacing: 8) {
-            Button {
-                store.undoLastEntry()
-            } label: {
-                Image(systemName: "arrow.uturn.backward")
-                    .font(.system(size: 12, weight: .medium))
-                    .frame(width: 28, height: 26)
-            }
-            .buttonStyle(.bordered)
-            .disabled(!store.canUndo)
-            .help("Undo the last drink")
+            logControl
+            overflowMenu
+        }
+    }
 
+    // MARK: - Joined + / − control
+
+    /// Log and remove as a single segmented box.
+    ///
+    /// Built by hand rather than from two `.borderedProminent` buttons: those carry
+    /// their own backgrounds and insets, so butting them together still shows a seam.
+    /// Here one shared background is drawn behind both segments, the buttons are
+    /// `.plain`, and a hairline divider separates them.
+    private var logControl: some View {
+        HStack(spacing: 0) {
             Button {
                 store.logGlass()
             } label: {
@@ -32,35 +39,66 @@ struct QuickAddView: View {
                         .font(.system(size: 13, weight: .medium))
                 }
                 .frame(maxWidth: .infinity)
-                .frame(height: 26)
+                .frame(height: controlHeight)
+                // Without this the gaps between glyph and text are not clickable.
+                .contentShape(Rectangle())
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.plain)
             .help("Log one glass")
 
-            Menu {
-                Section("Log a different amount") {
-                    ForEach(otherPresets, id: \.self) { amount in
-                        Button(store.unitSystem.format(millilitres: amount)) {
-                            store.log(millilitres: amount)
-                        }
+            Rectangle()
+                .fill(.white.opacity(0.28))
+                .frame(width: 1, height: controlHeight)
+
+            Button {
+                store.undoLastEntry()
+            } label: {
+                Image(systemName: "minus")
+                    .font(.system(size: 12, weight: .bold))
+                    .frame(width: 30, height: controlHeight)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(!store.canUndo)
+            // A shared background means the disabled segment cannot dim itself, so
+            // dim it explicitly.
+            .opacity(store.canUndo ? 1 : 0.4)
+            .help("Remove the last drink, refilling the carafe")
+        }
+        .foregroundStyle(.white)
+        .background {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(Color.accentColor)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+    }
+
+    // MARK: - Overflow
+
+    private var overflowMenu: some View {
+        Menu {
+            Section("Log a different amount") {
+                ForEach(otherPresets, id: \.self) { amount in
+                    Button(store.unitSystem.format(millilitres: amount)) {
+                        store.log(millilitres: amount)
                     }
                 }
-
-                Divider()
-
-                Button("Reset today", role: .destructive) {
-                    store.resetToday()
-                }
-                .disabled(!store.canUndo)
-            } label: {
-                Image(systemName: "ellipsis")
-                    .font(.system(size: 12, weight: .medium))
             }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .frame(width: 24, height: 26)
-            .help("More amounts")
+
+            Divider()
+
+            Button("Reset today", role: .destructive) {
+                store.resetToday()
+            }
+            .disabled(!store.canUndo)
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 12, weight: .medium))
         }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .frame(width: 24, height: controlHeight)
+        .help("More amounts")
     }
 
     /// Presets excluding the configured glass size, which already has its own button.
