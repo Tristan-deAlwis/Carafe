@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  App Sandbox is intentionally OFF.
+
+	  Carafe is distributed outside the Mac App Store, so the sandbox is not
+	  required. Leaving it off keeps history.json at the documented location
+	  ~/Library/Application Support/Carafe/ rather than inside a container,
+	  and avoids entitlement friction for SMAppService login items.
+
+	  Hardened Runtime is ON (see project.yml) because notarization requires it.
+	-->
+	<key>com.apple.security.app-sandbox</key>
+	<false/>
+</dict>
+</plist>
