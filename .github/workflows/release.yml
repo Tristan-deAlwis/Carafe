@@ -106,10 +106,8 @@ jobs:
           {
             echo "## Carafe ${{ steps.facts.outputs.version }}"
             echo
-            echo '```'
-            echo 'brew tap tristan-dealwis/carafe'
-            echo 'brew install --cask carafe'
-            echo '```'
+            echo "Download the zip below, unzip it, and drag **Carafe.app** to \`/Applications\`."
+            echo "Requires macOS 14 or later. Universal — Apple silicon and Intel."
             echo
             echo "SHA-256: \`${{ steps.facts.outputs.sha256 }}\`"
             echo

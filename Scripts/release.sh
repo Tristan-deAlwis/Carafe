@@ -109,4 +109,4 @@ echo " SHA-256  : $SHA"
 echo " Notarized: $([ "$SIGNED_PROPERLY" = true ] && [ -n "${NOTARY_PROFILE:-}" ] && echo yes || echo no)"
 echo "-----------------------------------------------------------"
 echo
-echo "For the Homebrew cask, set version \"$VERSION\" and sha256 \"$SHA\"."
+echo "Attach $ZIP to the GitHub release and publish the SHA-256 alongside it."
